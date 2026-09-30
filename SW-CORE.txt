@@ -1,0 +1,56 @@
+enable
+configure terminal
+hostname SW-CORE
+no ip domain-lookup
+enable secret Cisco@325
+banner motd # Authorised access only - Ratanang Recruitment Agency #
+line console 0
+ password cisco325
+ login
+ logging synchronous
+ exit
+vlan 10
+ name MGMT-ADMIN
+vlan 20
+ name RECRUITMENT
+vlan 30
+ name CLIENT-RELATIONS
+vlan 40
+ name IT-SERVERS
+vlan 50
+ name PRINTER-ZONE
+vlan 99
+ name NATIVE-MGMT
+interface vlan 1
+ shutdown
+interface vlan 99
+ description Switch management
+ ip address 10.37.90.98 255.255.255.248
+ no shutdown
+ exit
+ip default-gateway 10.37.90.97
+!
+! ---- STP: primary root ----
+spanning-tree mode pvst
+spanning-tree vlan 10,20,30,40,50,99 priority 4096
+!
+interface FastEthernet0/1
+ description Trunk to RTR-TAUNG Gi0/1
+ switchport mode trunk
+ switchport trunk native vlan 99
+ switchport trunk allowed vlan 10,20,30,40,50,99
+ no shutdown
+interface GigabitEthernet0/1
+ description Trunk to SW-A Gi0/1
+ switchport mode trunk
+ switchport trunk native vlan 99
+ switchport trunk allowed vlan 10,20,30,40,50,99
+ no shutdown
+interface GigabitEthernet0/2
+ description Trunk to SW-B Gi0/1
+ switchport mode trunk
+ switchport trunk native vlan 99
+ switchport trunk allowed vlan 10,20,30,40,50,99
+ no shutdown
+end
+copy running-config startup-config

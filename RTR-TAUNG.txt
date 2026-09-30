@@ -1,0 +1,90 @@
+enable
+configure terminal
+hostname RTR-TAUNG
+no ip domain-lookup
+enable secret Cisco@325
+banner motd # Authorised access only - Ratanang Recruitment Agency #
+line console 0
+ password cisco325
+ login
+ logging synchronous
+ exit
+!
+! ---- Router-on-a-stick (LAN side) ----
+interface GigabitEthernet0/1
+ description Trunk to SW-CORE Fa0/1
+ no shutdown
+interface GigabitEthernet0/1.10
+ description MGMT-ADMIN gateway
+ encapsulation dot1Q 10
+ ip address 10.37.90.65 255.255.255.240
+ ip nat inside
+interface GigabitEthernet0/1.20
+ description RECRUITMENT gateway
+ encapsulation dot1Q 20
+ ip address 10.37.90.1 255.255.255.224
+ ip nat inside
+interface GigabitEthernet0/1.30
+ description CLIENT-RELATIONS gateway
+ encapsulation dot1Q 30
+ ip address 10.37.90.33 255.255.255.224
+ ip nat inside
+interface GigabitEthernet0/1.40
+ description IT-SERVERS gateway
+ encapsulation dot1Q 40
+ ip address 10.37.90.81 255.255.255.248
+ ip nat inside
+interface GigabitEthernet0/1.50
+ description PRINTER-ZONE gateway (CR8)
+ encapsulation dot1Q 50
+ ip address 10.37.90.89 255.255.255.248
+ ip access-group PRINTER-ZONE-IN in
+ ip access-group PRINTER-ZONE-OUT out
+interface GigabitEthernet0/1.99
+ description NATIVE-MGMT gateway
+ encapsulation dot1Q 99 native
+ ip address 10.37.90.97 255.255.255.248
+ ip nat inside
+ exit
+!
+! ---- WAN side ----
+interface GigabitEthernet0/0
+ description WAN to ISP-CLOUD
+ ip address 10.37.90.105 255.255.255.252
+ ip nat outside
+ no cdp enable
+ no shutdown
+ exit
+ip route 0.0.0.0 0.0.0.0 10.37.90.106
+access-list 1 permit 10.37.90.0 0.0.0.127
+ip nat inside source list 1 interface GigabitEthernet0/0 overload
+!
+! ---- CR8: printer zone access control ----
+ip access-list extended PRINTER-ZONE-OUT
+ remark Only Recruitment and Client Relations may reach VLAN 50
+ permit ip 10.37.90.0 0.0.0.31 10.37.90.88 0.0.0.7
+ permit ip 10.37.90.32 0.0.0.31 10.37.90.88 0.0.0.7
+ deny ip any any
+ip access-list extended PRINTER-ZONE-IN
+ remark VLAN 50 may only talk back to Recruitment and Client Relations
+ permit ip 10.37.90.88 0.0.0.7 10.37.90.0 0.0.0.31
+ permit ip 10.37.90.88 0.0.0.7 10.37.90.32 0.0.0.31
+ deny ip any any
+ exit
+!
+! ---- DHCP for user VLANs (servers/printers are static) ----
+ip dhcp excluded-address 10.37.90.1
+ip dhcp excluded-address 10.37.90.33
+ip dhcp excluded-address 10.37.90.65
+ip dhcp pool RECRUITMENT
+ network 10.37.90.0 255.255.255.224
+ default-router 10.37.90.1
+ip dhcp pool CLIENT-RELATIONS
+ network 10.37.90.32 255.255.255.224
+ default-router 10.37.90.33
+ip dhcp pool MGMT-ADMIN
+ network 10.37.90.64 255.255.255.240
+ default-router 10.37.90.65
+ exit
+end
+copy running-config startup-config
